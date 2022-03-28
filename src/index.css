@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+    height: 100%;
+    min-height: 100vh;
+    min-height: stretch;
+    margin: 0;
+    line-height: 1.625;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* COLORS SHOLUD GO COLOR MODULE */
+html {
+    background-color: #fff;
+    color: #333;
+}
+
+html[data-color-scheme="dark"] {
+    background-color: #000;
+    color: #ccc;
+}
+
+input {
+    line-height: inherit;
+}
