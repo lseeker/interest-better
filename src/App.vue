@@ -282,6 +282,12 @@ function highlightClass(profit: number) {
       <dl>
         <dt>Balance</dt>
         <dd>{{ v.balance.toLocaleString() }}</dd>
+        <dt>Savings</dt>
+        <dd>{{ v.savings.toLocaleString() }}</dd>
+        <dt>Interest</dt>
+        <dd>{{ v.interest.toLocaleString() }}</dd>
+        <dt>Tax</dt>
+        <dd>{{ v.tax.toLocaleString() }}</dd>
         <dt>Profit</dt>
         <dd
           class="font-bold"
@@ -289,12 +295,6 @@ function highlightClass(profit: number) {
         >
           {{ v.profit.toLocaleString() }}
         </dd>
-        <dt>Savings</dt>
-        <dd>{{ v.savings.toLocaleString() }}</dd>
-        <dt>Interest</dt>
-        <dd>{{ v.interest.toLocaleString() }}</dd>
-        <dt>Tax</dt>
-        <dd>{{ v.tax.toLocaleString() }}</dd>
       </dl>
     </section>
   </div>
@@ -308,7 +308,7 @@ section {
   @apply p-2 border rounded flex-shrink-0;
 }
 h3 {
-  @apply font-bold underline text-center tracking-tight whitespace-nowrap !important;
+  @apply font-bold underline text-center tracking-tighter whitespace-nowrap !important;
 }
 dl {
   @apply grid grid-cols-2;
