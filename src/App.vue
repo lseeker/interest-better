@@ -1,7 +1,5 @@
 <script lang="ts" setup>
-import {
-  computed, reactive, watch,
-} from 'vue';
+import { computed, reactive, watch } from 'vue';
 
 function formatDate(date: Date) {
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`;
@@ -46,7 +44,11 @@ function taxForInterest(interest: number) {
 const optimized = computed<Result[]>(() => {
   const balanceForInterest1 = 18250; // 1 * 365 / 0.02
   // 767 is max income tax on 1b - interest value is 5479;
-  const result: Result[] = [];
+  const result: Result[] = [{
+    balance: 0,
+    interest: 0,
+    tax: 0,
+  }];
   for (let tax = 10; tax < 767; tax += 10) {
     const interestMax = tax / 0.14; // 14%
     const interest = Number.isInteger(interestMax) ? interestMax - 1 : Math.floor(interestMax);
@@ -63,12 +65,6 @@ const optimized = computed<Result[]>(() => {
 
   return result;
 });
-
-function dayN(days: number) {
-  const d = new Date(baseDate.value);
-  d.setDate(d.getDate() + days);
-  return formatDate(d);
-}
 
 function dayBalace(balance: number, days = 1): Result {
   const interest = Math.floor((balance * 0.02 * days) / 365);
@@ -139,7 +135,25 @@ const ZERO: Result = {
   tax: 0,
 };
 
-const better = computed(() => {
+interface CalcResult {
+  balance: number
+  savings: number
+  interest: number
+  tax: number
+  profit: number
+}
+
+function toCalcResultFrom(result: Result[]): CalcResult {
+  return {
+    balance: result[0].balance + result[1].balance,
+    savings: result[1].balance,
+    interest: result[0].interest + result[1].interest,
+    tax: result[0].tax + result[1].tax,
+    profit: result[0].interest + result[1].interest - result[0].tax - result[1].tax,
+  };
+}
+
+const compoundSavings = computed<CalcResult>(() => {
   let total = 0;
   let result: Result[] = [ZERO, ZERO];
 
@@ -158,12 +172,60 @@ const better = computed(() => {
     }
   }
 
-  return result;
+  return toCalcResultFrom(result);
 });
 
-const once = computed(() => dayBalace(totalBalance.value, days.value));
+const simpleSavings = computed(() => {
+  let total = 0;
+  let result: Result[] = [ZERO, ZERO];
 
-const comp = computed(() => compound(totalBalance.value, days.value));
+  for (let i = 0; i < optimized.value.length; i += 1) {
+    const opt = optimized.value[i];
+    if (opt.balance > totalBalance.value) {
+      break;
+    }
+
+    const bs = opt.balance;
+    const bsResult = dayBalace(bs, days.value);
+    const bnResult = dayBalace(totalBalance.value - bs, days.value);
+
+    const sum = bsResult.balance + bnResult.balance;
+    if (sum >= total) {
+      total = sum;
+
+      bnResult.balance += bsResult.interest - bsResult.tax;
+      bsResult.balance = bs;
+
+      result = [bnResult, bsResult];
+    }
+  }
+
+  return toCalcResultFrom(result);
+});
+
+function toCalcResult(result: Result): CalcResult {
+  return {
+    ...result,
+    savings: 0,
+    profit: result.interest - result.tax,
+  };
+}
+
+const result = computed(() => ({
+  Simple: toCalcResult(dayBalace(totalBalance.value, days.value)),
+  'Simple w/Savings': simpleSavings.value,
+  Compound: toCalcResult(compound(totalBalance.value, days.value)),
+  'Compound w/Savings': compoundSavings.value,
+}));
+
+const maxProfit = computed(() => Math.max(...Object.values(result.value).map((v) => v.profit)));
+
+function highlightClass(profit: number) {
+  if (profit === maxProfit.value) {
+    return 'text-red-600';
+  }
+  return '';
+}
 
 </script>
 
@@ -206,67 +268,52 @@ const comp = computed(() => compound(totalBalance.value, days.value));
   <div class="mb-2">
     To: {{ formatDate(lastDate) }} ({{ days }} day{{ days === 1 ? '' : 's' }})
   </div>
-  <!--
-  <div class="flex gap-2 flex-wrap items-start justify-center">
-    <table>
-      <tr>
-        <th>Interest</th>
-        <th>Tax</th>
-        <th>Balance</th>
-      </tr>
-      <tr
-        v-for="(o, i) in optimized"
-        :key="i"
-      >
-        <td>{{ o.interest.toLocaleString() }}</td>
-        <td>{{ o.tax }}</td>
-        <td>{{ o.balance.toLocaleString() }}</td>
-      </tr>
-    </table>
-    -->
 
-  <table>
-    <tr>
-      <th>Method</th>
-      <th>Balance Total</th>
-      <th>Balance Savings</th>
-      <th>Interest</th>
-      <th>Tax</th>
-    </tr>
-    <tr>
-      <th>Simple</th>
-      <td>{{ once.balance.toLocaleString() }}</td>
-      <td>0</td>
-      <td>{{ once.interest.toLocaleString() }}</td>
-      <td>{{ once.tax }}</td>
-    </tr>
-    <tr>
-      <th>Compound</th>
-      <td>{{ comp.balance.toLocaleString() }}</td>
-      <td>0</td>
-      <td>{{ comp.interest.toLocaleString() }}</td>
-      <td>{{ comp.tax }}</td>
-    </tr>
-    <tr>
-      <th>Compound w/Savings</th>
-      <td>{{ (better[0].balance + better[1].balance).toLocaleString() }}</td>
-      <td>{{ better[1].balance.toLocaleString() }}</td>
-      <td>{{ (better[0].interest + better[1].interest).toLocaleString() }}</td>
-      <td>{{ better[0].tax + better[1].tax }}</td>
-    </tr>
-  </table>
+  <h2 class="text-xl font-bold my-2">
+    Result
+  </h2>
 
-  <!-- </div> -->
+  <div class="flex flex-wrap justify-center gap-2">
+    <section
+      v-for="(v, k) in result"
+      :key="k"
+    >
+      <h3>{{ k }}</h3>
+      <dl>
+        <dt>Balance</dt>
+        <dd>{{ v.balance.toLocaleString() }}</dd>
+        <dt>Profit</dt>
+        <dd
+          class="font-bold"
+          :class="highlightClass(v.profit)"
+        >
+          {{ v.profit.toLocaleString() }}
+        </dd>
+        <dt>Savings</dt>
+        <dd>{{ v.savings.toLocaleString() }}</dd>
+        <dt>Interest</dt>
+        <dd>{{ v.interest.toLocaleString() }}</dd>
+        <dt>Tax</dt>
+        <dd>{{ v.tax.toLocaleString() }}</dd>
+      </dl>
+    </section>
+  </div>
 </template>
 
 <style>
 #app {
   @apply flex flex-col items-center pt-8;
 }
-th {
-  @apply border p-1 text-center;
+section {
+  @apply p-2 border rounded flex-shrink-0;
 }
-td {
-  @apply border p-1 text-right;
+h3 {
+  @apply font-bold underline text-center tracking-tight whitespace-nowrap !important;
+}
+dl {
+  @apply grid grid-cols-2;
+};
+dd {
+  @apply text-right;
 }
 </style>
