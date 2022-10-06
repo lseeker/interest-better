@@ -6,9 +6,10 @@ function formatDate(date: Date) {
 }
 
 const data = reactive({
+  interestRate: Number(localStorage.getItem('rate') ?? 2.3),
   baseDay: formatDate(new Date()),
-  balance1: Number(localStorage.getItem('balance1')) ?? 0,
-  balance2: Number(localStorage.getItem('balance2')) ?? 0,
+  balance1: Number(localStorage.getItem('balance1') ?? 0),
+  balance2: Number(localStorage.getItem('balance2') ?? 0),
 });
 
 const baseDate = computed(() => new Date(data.baseDay));
@@ -25,6 +26,7 @@ const lastDate = computed(() => {
 });
 const totalBalance = computed(() => data.balance1 + data.balance2);
 
+watch(() => data.interestRate, (i) => localStorage.setItem('rate', `${i}`));
 watch(() => data.balance1, (b) => localStorage.setItem('balance1', `${b}`));
 watch(() => data.balance2, (b) => localStorage.setItem('balance2', `${b}`));
 
@@ -42,7 +44,7 @@ function taxForInterest(interest: number) {
 }
 
 const optimized = computed<Result[]>(() => {
-  const balanceForInterest1 = 18250; // 1 * 365 / 0.02
+  const balanceForInterest1 = 365 / (data.interestRate / 100); // 1 * 365 / rate
   // 767 is max income tax on 1b - interest value is 5479;
   const result: Result[] = [{
     balance: 0,
@@ -52,7 +54,7 @@ const optimized = computed<Result[]>(() => {
   for (let tax = 10; tax < 767; tax += 10) {
     const interestMax = tax / 0.14; // 14%
     const interest = Number.isInteger(interestMax) ? interestMax - 1 : Math.floor(interestMax);
-    const balance = balanceForInterest1 * interest;
+    const balance = Math.ceil(balanceForInterest1 * interest);
     if (balance > totalBalance.value) {
       break;
     }
@@ -67,7 +69,7 @@ const optimized = computed<Result[]>(() => {
 });
 
 function dayBalace(balance: number, days = 1): Result {
-  const interest = Math.floor((balance * 0.02 * days) / 365);
+  const interest = Math.floor((balance * (data.interestRate / 100) * days) / 365);
   const tax = taxForInterest(interest);
 
   return {
@@ -112,7 +114,7 @@ function calcCompoundNormal(balance: number, bsi: number, days: number) {
 }
 
 function calcForSeparation(bn: number, bs: number, days: number) {
-  const bsi = Math.floor((bs * 0.02) / 365);
+  const bsi = Math.floor((bs * (data.interestRate / 100)) / 365);
   const bst = taxForInterest(bsi);
   const bsResult: Result = {
     balance: bs,
@@ -233,22 +235,32 @@ function highlightClass(profit: number) {
   <h1 class="text-3xl font-bold">
     Interest Better
   </h1>
-  <p>Rate: 2%</p>
   <form
     class="flex flex-col gap-2 my-2"
     @submit.prevent=""
   >
+    <label class="flex items-baseline gap-1">Interest rate
+      <input
+        v-model="data.interestRate"
+        class="text-right w-36"
+        type="number"
+        min="0"
+        step="0.1"
+      >
+      %
+    </label>
+
     <label class="flex justify-between items-baseline gap-1">Base day
       <input
         v-model="data.baseDay"
-        class="border p-1"
+        class="text-center"
         type="date"
       >
     </label>
     <label class="flex justify-between items-baseline gap-1">Balance1
       <input
         v-model="data.balance1"
-        class="border p-1"
+        class="text-right"
         type="number"
         size="11"
       >
@@ -256,7 +268,7 @@ function highlightClass(profit: number) {
     <label class="flex justify-between items-baseline gap-1">Balance2
       <input
         v-model="data.balance2"
-        class="border p-1"
+        class="text-right"
         type="number"
         size="11"
       >
@@ -286,6 +298,8 @@ function highlightClass(profit: number) {
         <dd>{{ v.savings.toLocaleString() }}</dd>
         <dt>Interest</dt>
         <dd>{{ v.interest.toLocaleString() }}</dd>
+        <dt>B2 - SV</dt>
+        <dd>{{ (v.savings - data.balance2).toLocaleString() }}</dd>
         <dt>Tax</dt>
         <dd>{{ v.tax.toLocaleString() }}</dd>
         <dt>Profit</dt>
@@ -315,5 +329,8 @@ dl {
 };
 dd {
   @apply text-right;
+}
+label>input {
+  @apply border p-1 w-40;
 }
 </style>
