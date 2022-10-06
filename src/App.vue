@@ -45,13 +45,13 @@ function taxForInterest(interest: number) {
 
 const optimized = computed<Result[]>(() => {
   const balanceForInterest1 = 365 / (data.interestRate / 100); // 1 * 365 / rate
-  // 767 is max income tax on 1b - interest value is 5479;
   const result: Result[] = [{
     balance: 0,
     interest: 0,
     tax: 0,
   }];
-  for (let tax = 10; tax < 767; tax += 10) {
+  const maxTaxOn1B = taxForInterest(Math.floor((1000000000 * (data.interestRate / 100)) / 365));
+  for (let tax = 10; tax < maxTaxOn1B; tax += 10) {
     const interestMax = tax / 0.14; // 14%
     const interest = Number.isInteger(interestMax) ? interestMax - 1 : Math.floor(interestMax);
     const balance = Math.ceil(balanceForInterest1 * interest);
@@ -262,7 +262,8 @@ function highlightClass(profit: number) {
         v-model="data.balance1"
         class="text-right"
         type="number"
-        size="11"
+        min="0"
+        max="1000000000"
       >
     </label>
     <label class="flex justify-between items-baseline gap-1">Balance2
@@ -270,7 +271,8 @@ function highlightClass(profit: number) {
         v-model="data.balance2"
         class="text-right"
         type="number"
-        size="11"
+        min="0"
+        max="1000000000"
       >
     </label>
   </form>
@@ -282,7 +284,7 @@ function highlightClass(profit: number) {
   </div>
 
   <h2 class="text-xl font-bold my-2">
-    Result
+    Results on {{ formatDate(lastDate) }}
   </h2>
 
   <div class="flex flex-wrap justify-center gap-2">
@@ -292,14 +294,14 @@ function highlightClass(profit: number) {
     >
       <h3>{{ k }}</h3>
       <dl>
-        <dt>Balance</dt>
+        <dt>Total</dt>
         <dd>{{ v.balance.toLocaleString() }}</dd>
-        <dt>Savings</dt>
+        <dt>Balance1</dt>
+        <dd>{{ (v.balance - v.savings).toLocaleString() }}</dd>
+        <dt>Balance2</dt>
         <dd>{{ v.savings.toLocaleString() }}</dd>
         <dt>Interest</dt>
         <dd>{{ v.interest.toLocaleString() }}</dd>
-        <dt>B2 - SV</dt>
-        <dd>{{ (v.savings - data.balance2).toLocaleString() }}</dd>
         <dt>Tax</dt>
         <dd>{{ v.tax.toLocaleString() }}</dd>
         <dt>Profit</dt>
@@ -309,6 +311,8 @@ function highlightClass(profit: number) {
         >
           {{ v.profit.toLocaleString() }}
         </dd>
+        <dt>B2 Transfer</dt>
+        <dd>{{ (v.savings - data.balance2).toLocaleString() }}</dd>
       </dl>
     </section>
   </div>
