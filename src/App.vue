@@ -13,17 +13,9 @@ const data = reactive({
 });
 
 const baseDate = computed(() => new Date(data.baseDay));
-const lastDate = computed(() => {
-  const base1 = new Date(baseDate.value.getFullYear(), baseDate.value.getMonth(), 1);
-  let finalDate = new Date(base1.getFullYear(), base1.getMonth(), 21 - base1.getDay());
-
-  if (finalDate <= baseDate.value) {
-    const next1 = new Date(baseDate.value.getFullYear(), baseDate.value.getMonth() + 1, 1);
-    finalDate = new Date(next1.getFullYear(), next1.getMonth(), 21 - next1.getDay());
-  }
-
-  return finalDate;
-});
+const lastDate = computed(
+  () => new Date(baseDate.value.getFullYear(), baseDate.value.getMonth() + 1, 1),
+);
 const totalBalance = computed(() => data.balance1 + data.balance2);
 
 watch(() => data.interestRate, (i) => localStorage.setItem('rate', `${i}`));
