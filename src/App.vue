@@ -6,17 +6,17 @@ function formatDate(date: Date) {
 }
 
 const data = reactive({
-  interestRate: Number(localStorage.getItem('rate') ?? 2.3),
+  interestRate: Number(localStorage.getItem('rate') ?? 2.0),
   baseDay: formatDate(new Date()),
-  balance1: Number(localStorage.getItem('balance1') ?? 0),
-  balance2: Number(localStorage.getItem('balance2') ?? 0),
+  balance1: Number(localStorage.getItem('balance1') ?? 0) || null,
+  balance2: Number(localStorage.getItem('balance2') ?? 0) || null,
 });
 
 const baseDate = computed(() => new Date(data.baseDay));
 const lastDate = computed(
   () => new Date(baseDate.value.getFullYear(), baseDate.value.getMonth() + 1, 1),
 );
-const totalBalance = computed(() => data.balance1 + data.balance2);
+const totalBalance = computed(() => (data.balance1 ?? 0) + (data.balance2 ?? 0));
 
 watch(() => data.interestRate, (i) => localStorage.setItem('rate', `${i}`));
 watch(() => data.balance1, (b) => localStorage.setItem('balance1', `${b}`));
@@ -256,6 +256,7 @@ function highlightClass(profit: number) {
         type="number"
         min="0"
         max="1000000000"
+        placeholder="0"
       >
     </label>
     <label class="flex justify-between items-baseline gap-1">Balance2
@@ -265,6 +266,7 @@ function highlightClass(profit: number) {
         type="number"
         min="0"
         max="1000000000"
+        placeholder="0"
       >
     </label>
   </form>
@@ -304,7 +306,7 @@ function highlightClass(profit: number) {
           {{ v.profit.toLocaleString() }}
         </dd>
         <dt>B2 Transfer</dt>
-        <dd>{{ (v.savings - data.balance2).toLocaleString() }}</dd>
+        <dd>{{ (v.savings - (data.balance2 ?? 0)).toLocaleString() }}</dd>
       </dl>
     </section>
   </div>
